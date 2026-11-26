@@ -38,6 +38,9 @@ variable "eks_cluster_arn" {
 locals {
   owner = split("/", var.github_repo)[0]
   repo  = split("/", var.github_repo)[1]
+
+  # Gałęzie, z których wolno wdrażać. Release'y budujemy z release/*.
+  deploy_refs = ["main", "release/*"]
 }
 
 resource "aws_iam_openid_connect_provider" "github" {
@@ -60,15 +63,20 @@ data "aws_iam_policy_document" "ci_trust" {
       values   = ["sts.amazonaws.com"]
     }
 
-    # Tylko gałąź main. Nowe repozytoria wysyłają sub z niezmiennymi ID:
-    # repo:<owner>@<id>/<repo>@<id>:ref:... — akceptujemy oba formaty, ID wpisane wprost.
+    # Tylko gałęzie z local.deploy_refs, w obu formatach sub:
+    #   stary: repo:<owner>/<repo>:ref:refs/heads/<gałąź>
+    #   nowy:  repo:<owner>@<id>/<repo>@<id>:ref:refs/heads/<gałąź>
+    # Każdy wzorzec MUSI kończyć się na :ref:refs/heads/<gałąź>. Samo „repo@<id>:*”
+    # wpuściłoby też pull requesty, tagi, environmenty i dowolne inne gałęzie.
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values = [
-        "repo:${var.github_repo}:ref:refs/heads/main",
-        "repo:${local.owner}@${var.github_owner_id}/${local.repo}@${var.github_repo_id}:ref:refs/heads/main",
-      ]
+      values = flatten([
+        for ref in local.deploy_refs : [
+          "repo:${var.github_repo}:ref:refs/heads/${ref}",
+          "repo:${local.owner}@${var.github_owner_id}/${local.repo}@${var.github_repo_id}:ref:refs/heads/${ref}",
+        ]
+      ])
     }
   }
 }
@@ -76,7 +84,12 @@ data "aws_iam_policy_document" "ci_trust" {
 resource "aws_iam_role" "ci" {
   name                 = "kantyna-ci"
   assume_role_policy   = data.aws_iam_policy_document.ci_trust.json
-  max_session_duration = 3600
+  max_session_duration = 7200 # build release'u z testami e2e trwa ponad godzinę
+
+  tags = {
+    app   = "kantyna"
+    owner = "platform"
+  }
 }
 
 data "aws_iam_policy_document" "ci" {
