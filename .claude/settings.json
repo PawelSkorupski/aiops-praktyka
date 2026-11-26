@@ -6,5 +6,16 @@
               "Bash(kubectl rollout:*)", "Bash(kubectl apply:*)"],
     "deny":  ["Bash(kubectl get secret:*)", "Bash(kubectl get secrets:*)", "Bash(*secret*)",
               "Bash(kubectl delete:*)", "Bash(kubectl exec:*)"]
-  }
+  },
+  "hooks": {
+  "PreToolUse": [
+    {
+      "matcher": "Bash",
+      "hooks": [
+        { "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/bramka-merge.sh\"" }
+      ]
+    }
+  ]
+}
+
 }
