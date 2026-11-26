@@ -152,9 +152,12 @@ jobs:
         run: |
           helm version
           # loadgen.image.pinTag: loadgena nie budujemy, więc nie może dostać tagu SHA.
+          # --force-conflicts: Helm 4 robi server-side apply; pola zmienione ręcznie
+          # (np. kubectl set image w labach) przejmujemy — stan z Gita wygrywa.
           helm upgrade kantyna app/deploy/helm/kantyna \
             --namespace "$K8S_NAMESPACE" \
             --reuse-values \
+            --force-conflicts \
             --set global.imageRegistry="$ECR_REGISTRY" \
             --set global.imageTag="$GITHUB_SHA" \
             --set loadgen.image.pinTag=true
