@@ -63,15 +63,20 @@ data "aws_iam_policy_document" "ci_trust" {
       values   = ["sts.amazonaws.com"]
     }
 
-    # Gałęzie z local.deploy_refs. Format z niezmiennymi ID jednoznacznie wskazuje
-    # repo, więc dopasowujemy go po samym repo, żeby nie dublować listy gałęzi.
+    # Tylko gałęzie z local.deploy_refs, w obu formatach sub:
+    #   stary: repo:<owner>/<repo>:ref:refs/heads/<gałąź>
+    #   nowy:  repo:<owner>@<id>/<repo>@<id>:ref:refs/heads/<gałąź>
+    # Każdy wzorzec MUSI kończyć się na :ref:refs/heads/<gałąź>. Samo „repo@<id>:*”
+    # wpuściłoby też pull requesty, tagi, environmenty i dowolne inne gałęzie.
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values = concat(
-        [for ref in local.deploy_refs : "repo:${var.github_repo}:ref:refs/heads/${ref}"],
-        ["repo:${local.owner}@${var.github_owner_id}/${local.repo}@${var.github_repo_id}:*"],
-      )
+      values = flatten([
+        for ref in local.deploy_refs : [
+          "repo:${var.github_repo}:ref:refs/heads/${ref}",
+          "repo:${local.owner}@${var.github_owner_id}/${local.repo}@${var.github_repo_id}:ref:refs/heads/${ref}",
+        ]
+      ])
     }
   }
 }
