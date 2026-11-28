@@ -12,7 +12,7 @@ on:
       - "app/**"
       - ".github/workflows/ci.yml"
 
-permissions: {}
+permissions: write-all
 
 # PR: nowszy commit anuluje stary przebieg. Main: wdrożenia kolejkowane, nigdy przerywane w połowie.
 concurrency:
@@ -36,7 +36,7 @@ jobs:
       run:
         working-directory: app/orders-api
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@v4
         with:
           persist-credentials: false
 
